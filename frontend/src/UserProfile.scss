@@ -1,0 +1,116 @@
+.user-profile-container {
+  margin-top: auto; // Pushes the profile to the bottom of the sidebar
+  background-color: rgba(0, 0, 0, 0.3);
+  padding: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.user-profile-card {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .avatar-wrapper {
+    position: relative;
+    margin-right: 12px;
+
+    .avatar {
+      width: 40px;
+      height: 40px;
+      margin: 0;
+    }
+
+    .status-indicator-mini {
+      position: absolute;
+      bottom: -2px;
+      right: -2px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 3px solid #2f3136; // Matches dark theme background
+      
+      &.online { background-color: #3ba55d; }
+      &.idle { background-color: #faa61a; }
+      &.dnd { background-color: #ed4245; }
+      &.offline { background-color: #747f8d; }
+    }
+  }
+
+  .user-details {
+    .username {
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .status-text {
+      font-size: 0.8rem;
+      color: #b9bbbe;
+    }
+  }
+}
+
+.status-picker-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+}
+
+.status-picker {
+  position: absolute;
+  bottom: 85px; // Position above the user profile card
+  left: 20px;
+  width: 260px;
+  background-color: #18191c;
+  border-radius: 8px;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.24);
+  color: #fff;
+  overflow: hidden;
+
+  .status-picker-header {
+    padding: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+
+    .avatar {
+      width: 60px;
+      height: 60px;
+      margin-bottom: 8px;
+    }
+    .username {
+      font-weight: 700;
+      font-size: 1.1rem;
+    }
+    .current-status-text {
+      font-size: 0.8rem;
+      color: #b9bbbe;
+    }
+  }
+
+  ul {
+    list-style: none;
+    padding: 8px;
+    margin: 0;
+
+    li {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px;
+      cursor: pointer;
+      border-radius: 4px;
+      font-size: 0.9rem;
+
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+      }
+    }
+  }
+} 

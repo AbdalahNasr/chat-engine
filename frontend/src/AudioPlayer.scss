@@ -1,0 +1,276 @@
+.custom-audio-player {
+  background: rgba(255, 255, 255, 0.1);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 10px;
+  margin: 10px 0;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, transparent, rgba(3, 233, 244, 0.1), transparent);
+    pointer-events: none;
+  }
+
+  .audio-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .play-button {
+    background: linear-gradient(45deg, #03e9f4, #00bcd4);
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 10px rgba(3, 233, 244, 0.2);
+    font-size: 16px;
+
+    &:hover {
+      transform: scale(1.1);
+      box-shadow: 0 6px 20px rgba(3, 233, 244, 0.5);
+    }
+
+    &:active {
+      transform: scale(0.95);
+    }
+  }
+
+  .audio-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+  }
+
+  .voice-waves-container {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    height: 30px;
+    padding: 5px 0;
+    width: 100%;
+    justify-content: space-between;
+    gap: 0;
+
+    .voice-wave {
+      width: 3px;
+      background: linear-gradient(to top, #03e9f4, #00bcd4);
+      border-radius: 2px;
+      transition: height 0.3s ease;
+      animation: wavePulse 1.5s ease-in-out infinite;
+    }
+  }
+
+  // Enhanced animation when playing
+  &.playing .voice-wave {
+    animation: wavePulse 0.8s ease-in-out infinite;
+    
+    @keyframes wavePulse {
+      0%, 100% {
+        opacity: 0.6;
+        transform: scaleY(0.8);
+      }
+      50% {
+        opacity: 1;
+        transform: scaleY(1.6);
+      }
+    }
+  }
+
+  .time-display {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.7);
+    font-family: 'Courier New', monospace;
+
+    span {
+      &:nth-child(2) {
+        color: #03e9f4;
+        font-weight: bold;
+      }
+    }
+  }
+
+  .audio-settings {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .speed-button {
+    background: rgba(3, 233, 244, 0.2);
+    border: 1px solid rgba(3, 233, 244, 0.3);
+    border-radius: 15px;
+    padding: 6px 12px;
+    color: #03e9f4;
+    font-size: 11px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 45px;
+    text-align: center;
+
+    &:hover {
+      background: rgba(3, 233, 244, 0.3);
+      border-color: rgba(3, 233, 244, 0.5);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(3, 233, 244, 0.3);
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+  }
+
+  .volume-control {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .volume-slider {
+    width: 60px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+
+    &::-webkit-slider-thumb {
+      appearance: none;
+      width: 12px;
+      height: 12px;
+      background: #03e9f4;
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(3, 233, 244, 0.5);
+    }
+
+    &::-moz-range-thumb {
+      width: 12px;
+      height: 12px;
+      background: #03e9f4;
+      border-radius: 50%;
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 0 10px rgba(3, 233, 244, 0.5);
+    }
+  }
+
+  .delete-button {
+    background: rgba(255, 59, 48, 0.2);
+    border: 1px solid rgba(255, 59, 48, 0.3);
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ff3b30;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+    font-weight: bold;
+
+    &:hover {
+      background: rgba(255, 59, 48, 0.3);
+      border-color: rgba(255, 59, 48, 0.5);
+      transform: scale(1.1);
+      box-shadow: 0 4px 15px rgba(255, 59, 48, 0.3);
+    }
+
+    &:active {
+      transform: scale(0.95);
+    }
+  }
+
+  // Styles for when the component is in recording mode
+  &.is-recording {
+    .audio-controls {
+      gap: 12px;
+      align-items: center;
+    }
+
+    .time-display {
+      font-size: 13px;
+      color: #ff4d4d;
+      flex-shrink: 0; // Prevent the timer from shrinking
+    }
+
+    .audio-info {
+      flex: 1; // Allow the info section to take up remaining space
+      min-width: 0; // Prevent flexbox overflow issues
+    }
+    
+    .voice-waves-container {
+      width: 100%; // Make waves take full width of the container
+    }
+  }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .custom-audio-player {
+    padding: 12px;
+
+    .audio-controls {
+      gap: 10px;
+    }
+
+    .play-button {
+      width: 40px;
+      height: 40px;
+      font-size: 16px;
+    }
+
+    .voice-waves-container {
+      height: 35px;
+    }
+
+    .voice-wave {
+      width: 2px;
+    }
+
+    .audio-settings {
+      gap: 10px;
+    }
+
+    .speed-button {
+      padding: 6px 12px;
+      font-size: 11px;
+      min-width: 45px;
+    }
+
+    .volume-slider {
+      width: 50px;
+    }
+  }
+}
+
+// Glow effect on hover
+.custom-audio-player:hover {
+  box-shadow: 0 12px 40px rgba(3, 233, 244, 0.2);
+  border-color: rgba(3, 233, 244, 0.3);
+} 
