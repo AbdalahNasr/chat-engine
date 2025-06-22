@@ -5,6 +5,9 @@ const { Server } = require("socket.io");
 const connectDB = require('./config/db');
 const Message = require('./models/Message');
 const User = require('./models/User');
+const session = require('express-session');
+const passport = require('passport');
+const configurePassport = require('./config/passport');
 
 // Load environment variables
 require('dotenv').config();
@@ -37,18 +40,43 @@ connectDB();
 
 const app = express();
 app.use(express.json());
+
+// Determine BASE_URL
+const BASE_URL = process.env.BASE_URL || `http://localhost:3001`;
+
+// CORS setup: allow local and deployed frontend
+const allowedOrigins = [
+  /^http:\/\/localhost:\d+$/,
+];
+if (process.env.FRONTEND_URL) {
+  allowedOrigins.push(process.env.FRONTEND_URL);
+}
+
 app.use(cors({
   origin: function(origin, callback) {
     // Allow requests with no origin (like mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
     // Allow any localhost port
-    if (/^http:\/\/localhost:\d+$/.test(origin)) {
+    if (allowedOrigins.some(pattern => (typeof pattern === 'string' ? pattern === origin : pattern.test(origin)))) {
       return callback(null, true);
     }
-    // Otherwise, block it
     callback(new Error('Not allowed by CORS'));
-  }
+  },
+  credentials: true
 }));
+
+// Session middleware (required for Passport)
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'keyboard cat',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: false } // Set to true if using HTTPS
+}));
+
+// Initialize Passport
+configurePassport();
+app.use(passport.initialize());
+app.use(passport.session());
 
 // Define Routes
 app.use('/api/auth', require('./routes/auth'));
@@ -222,7 +250,7 @@ io.on('connection', async (socket) => {
   });
 });
 
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Server running on ${BASE_URL}`);
 });

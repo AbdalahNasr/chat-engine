@@ -15,7 +15,7 @@ import PropTypes from 'prop-types';
 const defaultAvatar = 'https://icon-library.com/images/default-user-icon/default-user-icon-13.jpg';
 
 // This should match the address of your backend server
-const socket = io('http://localhost:3001');
+const socket = io(import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001');
 
 const ChatsPage = (props) => {
   const [messages, setMessages] = useState([]);

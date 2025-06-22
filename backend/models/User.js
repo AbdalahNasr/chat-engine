@@ -8,6 +8,11 @@ const userSchema = new mongoose.Schema({
   last_name: { type: String, default: '' },
   profileImage: { type: String, default: '' },
   status: { type: String, enum: ['online', 'idle', 'dnd', 'offline'], default: 'offline' },
+  googleId: { type: String },
+  facebookId: { type: String },
+  appleId: { type: String },
+  githubId: { type: String },
+  microsoftId: { type: String },
 });
 
 const User = mongoose.model('User', userSchema);
