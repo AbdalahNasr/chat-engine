@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const passport = require('passport');
-const { register, login, verifyEmail, forgotPassword, resetPassword } = require('../controllers/authController');
+const { register, login, verifyEmail, forgotPassword, resetPassword, verifyResetCode } = require('../controllers/authController');
 const { avatarUpload, uploadAvatarToCloudinary } = require('../middleware/avatarUpload');
 const jwt = require('jsonwebtoken');
 
@@ -21,6 +21,9 @@ router.get('/verify-email', verifyEmail);
 router.post('/forgot-password', forgotPassword);
 // Reset password
 router.post('/reset-password', resetPassword);
+
+// Verify reset code (OTP)
+router.post('/verify-reset-code', verifyResetCode);
 
 // Social login routes
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));

@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const { nanoid } = require('nanoid');
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3001';
+const TEMP_RESET_SECRET = process.env.TEMP_RESET_SECRET || 'tempresetsecret';
 
 // Utility to send email. It no longer has its own template; it just sends the HTML it's given.
 const sendMail = async (to, subject, html) => {
@@ -223,6 +224,7 @@ exports.forgotPassword = async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ msg: 'No account with that email.' });
     const resetCode = generateOTP();
+    console.log('Generated OTP for', email, ':', resetCode);
     user.resetPasswordToken = resetCode;
     user.resetPasswordExpires = Date.now() + 1000 * 60 * 15; // 15 min
     await user.save();
@@ -538,12 +540,36 @@ exports.forgotPassword = async (req, res) => {
   }
 };
 
-// Update resetPassword to accept code instead of token
-exports.resetPassword = async (req, res) => {
-  const { code, newPassword } = req.body;
+// Step 1: Verify reset code and issue temporary token
+exports.verifyResetCode = async (req, res) => {
+  const { email, code } = req.body;
   try {
-    const user = await User.findOne({ resetPasswordToken: code, resetPasswordExpires: { $gt: Date.now() } });
-    if (!user) return res.status(400).json({ msg: 'Invalid or expired code' });
+    const user = await User.findOne({ email, resetPasswordToken: String(code), resetPasswordExpires: { $gt: Date.now() } });
+    if (!user) {
+      return res.status(400).json({ msg: 'Invalid or expired code' });
+    }
+    // Issue a temporary JWT token for password reset (expires in 15 min)
+    const tempToken = jwt.sign({ userId: user._id }, TEMP_RESET_SECRET, { expiresIn: '15m' });
+    res.json({ tempToken });
+  } catch (err) {
+    res.status(500).json({ msg: 'Server error' });
+  }
+};
+
+// Step 2: Reset password using temporary token
+exports.resetPassword = async (req, res) => {
+  const { tempToken, newPassword } = req.body;
+  try {
+    let payload;
+    try {
+      payload = jwt.verify(tempToken, TEMP_RESET_SECRET);
+    } catch (err) {
+      return res.status(400).json({ msg: 'Invalid or expired reset session. Please request a new code.' });
+    }
+    const user = await User.findById(payload.userId);
+    if (!user) {
+      return res.status(400).json({ msg: 'User not found.' });
+    }
     const salt = await bcrypt.genSalt(10);
     user.password = await bcrypt.hash(newPassword, salt);
     user.resetPasswordToken = undefined;

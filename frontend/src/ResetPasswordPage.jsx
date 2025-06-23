@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import './AuthPage.scss';
+import PropTypes from 'prop-types';
 
 const OTPInput = ({ value, onChange, length = 6 }) => {
   const handlePaste = (e) => {
@@ -59,6 +60,12 @@ const OTPInput = ({ value, onChange, length = 6 }) => {
   return <div className="otp-inp">{inputs}</div>;
 };
 
+OTPInput.propTypes = {
+  value: PropTypes.string.isRequired,
+  onChange: PropTypes.func.isRequired,
+  length: PropTypes.number
+};
+
 export const OTPForm = ({ onSuccess, email }) => {
   const [code, setCode] = useState('');
   const [status, setStatus] = useState('idle');
@@ -96,15 +103,15 @@ export const OTPForm = ({ onSuccess, email }) => {
       return;
     }
     try {
-      // Just check if code is valid (do not reset password yet)
-      const res = await fetch('http://localhost:3001/api/auth/reset-password', {
+      // Call the new verify-reset-code endpoint
+      const res = await fetch('http://localhost:3001/api/auth/verify-reset-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, newPassword: 'dummy' }) // dummy password
+        body: JSON.stringify({ email, code })
       });
       const data = await res.json();
-      if (res.ok || (data.msg && data.msg.toLowerCase().includes('password'))) {
-        onSuccess(code);
+      if (res.ok && data.tempToken) {
+        onSuccess(data.tempToken); // Pass tempToken to next step
       } else {
         setStatus('error');
         setMessage(data.msg || 'Invalid code.');
@@ -142,7 +149,12 @@ export const OTPForm = ({ onSuccess, email }) => {
   );
 };
 
-export const ResetNewPasswordPage = ({ code }) => {
+OTPForm.propTypes = {
+  onSuccess: PropTypes.func.isRequired,
+  email: PropTypes.string
+};
+
+export const ResetNewPasswordPage = ({ tempToken }) => {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [status, setStatus] = useState('idle');
@@ -167,15 +179,23 @@ export const ResetNewPasswordPage = ({ code }) => {
       const res = await fetch('http://localhost:3001/api/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, newPassword: password })
+        body: JSON.stringify({ tempToken, newPassword: password })
       });
       const data = await res.json();
       if (res.ok) {
         setSuccess(true);
         setMessage('Password reset successful! You can now log in.');
+        window.alert('Password reset successful! Please log in with your new password.');
+        window.location.hash = '/';
       } else {
         setStatus('error');
-        setMessage(data.msg || 'Reset failed.');
+        if (data.msg && data.msg.toLowerCase().includes('expired')) {
+          setMessage('Your code has expired. Please request a new one.');
+        } else if (data.msg && data.msg.toLowerCase().includes('invalid')) {
+          setMessage('The code you entered is invalid. Please check your email or request a new code.');
+        } else {
+          setMessage(data.msg || 'Reset failed.');
+        }
       }
     } catch {
       setStatus('error');
@@ -216,16 +236,20 @@ export const ResetNewPasswordPage = ({ code }) => {
   );
 };
 
+ResetNewPasswordPage.propTypes = {
+  tempToken: PropTypes.string.isRequired
+};
+
 // Main page logic
 const ResetPasswordPage = ({ email }) => {
   const [step, setStep] = useState('otp');
-  const [otpCode, setOtpCode] = useState('');
+  const [tempToken, setTempToken] = useState('');
 
   if (step === 'otp') {
-    return <OTPForm onSuccess={code => { setOtpCode(code); setStep('reset'); }} email={email} />;
+    return <OTPForm onSuccess={token => { setTempToken(token); setStep('reset'); }} email={email} />;
   }
   if (step === 'reset') {
-    return <ResetNewPasswordPage code={otpCode} />;
+    return <ResetNewPasswordPage tempToken={tempToken} />;
   }
   return null;
 };
