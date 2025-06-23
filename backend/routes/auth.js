@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const passport = require('passport');
-const { register, login } = require('../controllers/authController');
+const { register, login, verifyEmail, forgotPassword, resetPassword } = require('../controllers/authController');
 const { avatarUpload, uploadAvatarToCloudinary } = require('../middleware/avatarUpload');
+const jwt = require('jsonwebtoken');
 
 // @route   POST api/auth/register
 // @desc    Register a new user
@@ -14,30 +15,33 @@ router.post('/register', avatarUpload.single('avatar'), uploadAvatarToCloudinary
 // @access  Public
 router.post('/login', login);
 
+// Email verification
+router.get('/verify-email', verifyEmail);
+// Forgot password
+router.post('/forgot-password', forgotPassword);
+// Reset password
+router.post('/reset-password', resetPassword);
+
 // Social login routes
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 router.get('/google/callback', passport.authenticate('google', { failureRedirect: '/login', session: false }), (req, res) => {
-  res.send('Google login successful!');
+  const token = jwt.sign({ id: req.user.id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+  const user = encodeURIComponent(JSON.stringify(req.user));
+  res.redirect(`${process.env.FRONTEND_URL}/callback?user=${user}&token=${token}`);
 });
 
 router.get('/facebook', passport.authenticate('facebook', { scope: ['email'] }));
 router.get('/facebook/callback', passport.authenticate('facebook', { failureRedirect: '/login', session: false }), (req, res) => {
-  res.send('Facebook login successful!');
-});
-
-router.get('/apple', passport.authenticate('apple'));
-router.post('/apple/callback', passport.authenticate('apple', { failureRedirect: '/login', session: false }), (req, res) => {
-  res.send('Apple login successful!');
+  const token = jwt.sign({ id: req.user.id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+  const user = encodeURIComponent(JSON.stringify(req.user));
+  res.redirect(`${process.env.FRONTEND_URL}/callback?user=${user}&token=${token}`);
 });
 
 router.get('/github', passport.authenticate('github', { scope: ['user:email'] }));
 router.get('/github/callback', passport.authenticate('github', { failureRedirect: '/login', session: false }), (req, res) => {
-  res.send('GitHub login successful!');
-});
-
-router.get('/microsoft', passport.authenticate('azuread-openidconnect', { scope: ['profile', 'email', 'openid'] }));
-router.get('/microsoft/callback', passport.authenticate('azuread-openidconnect', { failureRedirect: '/login', session: false }), (req, res) => {
-  res.send('Microsoft login successful!');
+  const token = jwt.sign({ id: req.user.id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+  const user = encodeURIComponent(JSON.stringify(req.user));
+  res.redirect(`${process.env.FRONTEND_URL}/callback?user=${user}&token=${token}`);
 });
 
 module.exports = router; 

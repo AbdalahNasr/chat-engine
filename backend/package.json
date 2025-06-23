@@ -18,9 +18,11 @@
     "dotenv": "^16.5.0",
     "express": "^4.19.2",
     "express-session": "*",
-    "jsonwebtoken": "*",
+    "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.16.0",
     "multer": "^2.0.1",
+    "nanoid": "^5.1.5",
+    "nodemailer": "^7.0.3",
     "nodemon": "^3.1.0",
     "passport": "*",
     "passport-apple": "*",
@@ -28,6 +30,7 @@
     "passport-facebook": "*",
     "passport-github2": "*",
     "passport-google-oauth20": "*",
+    "react-router-dom": "^7.6.2",
     "socket.io": "^4.8.1",
     "streamifier": "^0.1.1"
   }

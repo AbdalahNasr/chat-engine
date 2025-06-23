@@ -18,6 +18,7 @@ const requiredEnvVars = [
   'CLOUDINARY_CLOUD_NAME',
   'CLOUDINARY_API_KEY',
   'CLOUDINARY_API_SECRET',
+  'FRONTEND_URL',
 ];
 
 const missingEnvVars = requiredEnvVars.filter(key => !process.env[key]);
@@ -74,7 +75,7 @@ app.use(session({
 }));
 
 // Initialize Passport
-configurePassport();
+configurePassport(passport);
 app.use(passport.initialize());
 app.use(passport.session());
 
@@ -251,6 +252,10 @@ io.on('connection', async (socket) => {
 });
 
 const PORT = process.env.PORT || 3001;
+const localUrl = `http://localhost:${PORT}`;
+
 server.listen(PORT, () => {
-  console.log(`Server running on ${BASE_URL}`);
+  // When running locally, always log the local URL.
+  // The BASE_URL is for constructing redirect URIs, not for listening.
+  console.log(`Server running on ${localUrl}`);
 });

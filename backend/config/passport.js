@@ -1,81 +1,155 @@
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const FacebookStrategy = require('passport-facebook').Strategy;
-const AppleStrategy = require('passport-apple');
 const GitHubStrategy = require('passport-github2').Strategy;
-const MicrosoftStrategy = require('passport-azure-ad').OIDCStrategy;
+const User = require('../models/User'); // Import the User model
+const jwt = require('jsonwebtoken'); // Import JWT
+const { URL } = require('url'); // Import the URL constructor
 
-module.exports = function() {
-  // Google
+// Helper function to generate JWT
+const generateToken = (user) => {
+  return jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+};
+
+module.exports = function(passport) {
+  // Google Strategy
   passport.use(new GoogleStrategy({
-    clientID: process.env.GOOGLE_CLIENT_ID || '',
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-    callbackURL: process.env.BASE_URL + '/api/auth/google/callback',
-  }, (accessToken, refreshToken, profile, done) => {
-    console.log('Google profile:', profile);
-    // TODO: Find or create user in DB
-    return done(null, profile);
+    clientID: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    callbackURL: new URL('/api/auth/google/callback', process.env.BASE_URL).toString()
+  },
+  async (accessToken, refreshToken, profile, done) => {
+    const email = profile.emails && profile.emails.length > 0 ? profile.emails[0].value : null;
+    if (!email) {
+      return done(new Error("Email not provided by Google."), null);
+    }
+
+    const newUser = {
+      googleId: profile.id,
+      username: profile.displayName || email.split('@')[0],
+      email: email,
+      first_name: profile.name ? profile.name.givenName : '',
+      last_name: profile.name ? profile.name.familyName : '',
+      profileImage: profile.photos && profile.photos.length > 0 ? profile.photos[0].value : null,
+      isVerified: true
+    };
+
+    try {
+      let user = await User.findOne({ email: newUser.email });
+      if (user) {
+        // If user exists, update with Google ID if it's not already set
+        if (!user.googleId) {
+          user.googleId = profile.id;
+          await user.save();
+        }
+        done(null, user);
+      } else {
+        user = await User.create(newUser);
+        done(null, user);
+      }
+    } catch (err) {
+      console.error(err);
+      done(err, null);
+    }
   }));
 
-  // Facebook
+  // Facebook Strategy
   passport.use(new FacebookStrategy({
-    clientID: process.env.FACEBOOK_APP_ID || '',
-    clientSecret: process.env.FACEBOOK_APP_SECRET || '',
-    callbackURL: process.env.BASE_URL + '/api/auth/facebook/callback',
-    profileFields: ['id', 'emails', 'name', 'picture.type(large)']
-  }, (accessToken, refreshToken, profile, done) => {
-    console.log('Facebook profile:', profile);
-    // TODO: Find or create user in DB
-    return done(null, profile);
+    clientID: process.env.FACEBOOK_APP_ID,
+    clientSecret: process.env.FACEBOOK_APP_SECRET,
+    callbackURL: new URL('/api/auth/facebook/callback', process.env.BASE_URL).toString(),
+    profileFields: ['id', 'displayName', 'photos', 'email', 'name']
+  },
+  async (accessToken, refreshToken, profile, done) => {
+    const email = profile.emails && profile.emails.length > 0 ? profile.emails[0].value : null;
+    if (!email) {
+      return done(new Error("Email not provided by Facebook."), null);
+    }
+    
+    const newUser = {
+      facebookId: profile.id,
+      username: profile.displayName || email.split('@')[0],
+      email: email,
+      first_name: profile.name ? profile.name.givenName : '',
+      last_name: profile.name ? profile.name.familyName : '',
+      profileImage: profile.photos && profile.photos.length > 0 ? profile.photos[0].value : null,
+      isVerified: true
+    };
+
+    try {
+      let user = await User.findOne({ email: newUser.email });
+      if (user) {
+        if (!user.facebookId) {
+          user.facebookId = profile.id;
+          await user.save();
+        }
+        done(null, user);
+      } else {
+        user = await User.create(newUser);
+        done(null, user);
+      }
+    } catch (err) {
+      console.error(err);
+      done(err, null);
+    }
   }));
 
-  // Apple
-  passport.use(new AppleStrategy({
-    clientID: process.env.APPLE_CLIENT_ID || '',
-    teamID: process.env.APPLE_TEAM_ID || '',
-    keyID: process.env.APPLE_KEY_ID || '',
-    privateKey: process.env.APPLE_PRIVATE_KEY || '',
-    callbackURL: process.env.BASE_URL + '/api/auth/apple/callback',
-    scope: ['name', 'email']
-  }, (accessToken, refreshToken, idToken, profile, done) => {
-    console.log('Apple profile:', profile);
-    // TODO: Find or create user in DB
-    return done(null, profile);
-  }));
-
-  // GitHub
+  // GitHub Strategy
   passport.use(new GitHubStrategy({
-    clientID: process.env.GITHUB_CLIENT_ID || '',
-    clientSecret: process.env.GITHUB_CLIENT_SECRET || '',
-    callbackURL: process.env.BASE_URL + '/api/auth/github/callback',
-    scope: ['user:email']
-  }, (accessToken, refreshToken, profile, done) => {
-    console.log('GitHub profile:', profile);
-    // TODO: Find or create user in DB
-    return done(null, profile);
+    clientID: process.env.GITHUB_CLIENT_ID,
+    clientSecret: process.env.GITHUB_CLIENT_SECRET,
+    callbackURL: new URL('/api/auth/github/callback', process.env.BASE_URL).toString(),
+    scope: ['user:email'],
+  },
+  async (accessToken, refreshToken, profile, done) => {
+    // GitHub provides email in a variety of places
+    let email = null;
+    if (profile.emails && profile.emails.length > 0) {
+      email = profile.emails[0].value;
+    } else if (profile._json && profile._json.email) {
+      email = profile._json.email;
+    }
+
+    if (!email) {
+      return done(new Error("Email not provided by GitHub or is private."), null);
+    }
+
+    const newUser = {
+      githubId: profile.id,
+      username: profile.username || email.split('@')[0],
+      email: email,
+      profileImage: profile.photos && profile.photos.length > 0 ? profile.photos[0].value : null,
+      isVerified: true
+    };
+
+    try {
+      let user = await User.findOne({ email: newUser.email });
+      if (user) {
+        if (!user.githubId) {
+          user.githubId = profile.id;
+          await user.save();
+        }
+        done(null, user);
+      } else {
+        user = await User.create(newUser);
+        done(null, user);
+      }
+    } catch (err) {
+      console.error(err);
+      done(err, null);
+    }
   }));
 
-  // Microsoft
-  passport.use(new MicrosoftStrategy({
-    identityMetadata: `https://login.microsoftonline.com/${process.env.MICROSOFT_TENANT_ID || 'common'}/v2.0/.well-known/openid-configuration`,
-    clientID: process.env.MICROSOFT_CLIENT_ID || '',
-    clientSecret: process.env.MICROSOFT_CLIENT_SECRET || '',
-    responseType: 'code',
-    responseMode: 'query',
-    redirectUrl: process.env.BASE_URL + '/api/auth/microsoft/callback',
-    allowHttpForRedirectUrl: true,
-    scope: ['profile', 'email', 'openid']
-  }, (iss, sub, profile, accessToken, refreshToken, done) => {
-    console.log('Microsoft profile:', profile);
-    // TODO: Find or create user in DB
-    return done(null, profile);
-  }));
-
-  // Serialize/deserialize
   passport.serializeUser((user, done) => {
-    done(null, user);
+    done(null, user.id);
   });
-  passport.deserializeUser((obj, done) => {
-    done(null, obj);
+
+  passport.deserializeUser(async (id, done) => {
+    try {
+      const user = await User.findById(id);
+      done(null, user);
+    } catch (err) {
+      done(err, null);
+    }
   });
 }; 

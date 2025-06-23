@@ -312,174 +312,194 @@ const ChatsPage = (props) => {
   };
 
   return (
-    <div className="chats-container">
-      <div className="sidebar">
-        <h3 className="sidebar-header">Users</h3>
-        <ul className="user-list">
-          <li 
-            className={`user-list-item ${selectedChat.isGlobal ? 'selected-chat' : ''}`}
-            onClick={() => handleSelectChat({ isGlobal: true, name: 'Global Chat' })}
-          >
-            <div className="user-info">
-              <img src={defaultAvatar} alt="Global" className="avatar" />
-              # Global Chat
-              {notifications['Global Chat'] > 0 && 
-                <span className="notification-badge">{notifications['Global Chat']}</span>}
-            </div>
-          </li>
-          {users.map(user => {
-            const status = userStatuses[user.username] || 'offline';
-            return (
-              <li 
-                key={user._id} 
-                className={`user-list-item ${selectedChat._id === user._id ? 'selected-chat' : ''}`}
-                onClick={() => handleSelectChat(user)}
-              >
-                <div className="user-info">
-                  <div className="avatar-wrapper">
-                    <img src={user.profileImage || defaultAvatar} alt={user.username} className="avatar" />
-                    <span className={`status-indicator ${status}`}></span>
-                  </div>
-                  {user.username}
-                  <div className="user-status-container">
-                    {notifications[user.username] > 0 &&
-                      <span className="notification-badge">{notifications[user.username]}</span>}
-                  </div>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-        <UserProfile 
-          user={{...props.user, status: userStatuses[props.user.username]}} 
-          onStatusChange={handleStatusChange} 
-        />
-      </div>
-      <div className="chat-area">
-        <div className="header">
-          <h3>{selectedChat.name || selectedChat.username}</h3>
-          <div className="current-user-info">
-            <p>Welcome, {props.user.username}!</p>
-            <img src={props.user.profileImage || defaultAvatar} alt="My Avatar" className="avatar" />
-          </div>
-        </div>
-        <div className="messages-container">
-          {messages.map((msg, index) => {
-            const senderUser = users.find(u => u.username === msg.sender) || (msg.sender === props.user.username ? props.user : {});
-            return (
-              <div
-                key={index}
-                className={`message-bubble ${msg.sender === props.user.username ? 'my-message' : 'other-message'}`}
-              >
-                <img 
-                  src={senderUser.profileImage || defaultAvatar} 
-                  alt={msg.sender} 
-                  className="avatar message-avatar" 
-                />
-                <div className="message-content">
-                  <div className="message-header">
-                    <strong>{msg.sender}</strong>
-                    <span className="timestamp">
-                      {new Date(msg.timestamp).toLocaleString()}
-                    </span>
-                  </div>
-                  {msg.type === 'text' && <p className="message-text">{msg.text}</p>}
-                  {msg.type === 'image' && <img src={msg.fileUrl} alt="Sent file" className="chat-image" />}
-                  {msg.type === 'record' && <AudioPlayer audioUrl={msg.fileUrl} />}
-                </div>
+    <div style={{ height: "100vh", width: "100vw" }}>
+      <button 
+        onClick={() => props.onLogout()} 
+        style={{
+          position: 'absolute',
+          top: '12px',
+          left: '12px',
+          padding: '8px 12px',
+          backgroundColor: '#f44336',
+          color: 'white',
+          border: 'none',
+          borderRadius: '4px',
+          cursor: 'pointer',
+          zIndex: 100,
+          fontWeight: 'bold',
+        }}
+      >
+        Logout
+      </button>
+      <div className="chats-container">
+        <div className="sidebar">
+          <h3 className="sidebar-header">Users</h3>
+          <ul className="user-list">
+            <li 
+              className={`user-list-item ${selectedChat.isGlobal ? 'selected-chat' : ''}`}
+              onClick={() => handleSelectChat({ isGlobal: true, name: 'Global Chat' })}
+            >
+              <div className="user-info">
+                <img src={defaultAvatar} alt="Global" className="avatar" />
+                # Global Chat
+                {notifications['Global Chat'] > 0 && 
+                  <span className="notification-badge">{notifications['Global Chat']}</span>}
               </div>
-            );
-          })}
-          {typingUsers.length > 0 && (
-            <div className="typing-indicator">
-              <div className="typing-dots">
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
-              <span className="typing-text">
-                {typingUsers.length === 1 
-                  ? `${typingUsers[0]} is typing...`
-                  : `${typingUsers.join(', ')} are typing...`
-                }
-              </span>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-        <form onSubmit={sendMessage} className={`message-form ${isRecording ? 'is-recording' : ''}`}>
-          <input
-            type="file"
-            ref={fileInputRef}
-            style={{ display: 'none' }}
-            onChange={handleFileSend}
-            disabled={isUploading}
+            </li>
+            {users.map(user => {
+              const status = userStatuses[user.username] || 'offline';
+              return (
+                <li 
+                  key={user._id} 
+                  className={`user-list-item ${selectedChat._id === user._id ? 'selected-chat' : ''}`}
+                  onClick={() => handleSelectChat(user)}
+                >
+                  <div className="user-info">
+                    <div className="avatar-wrapper">
+                      <img src={user.profileImage || defaultAvatar} alt={user.username} className="avatar" />
+                      <span className={`status-indicator ${status}`}></span>
+                    </div>
+                    {user.username}
+                    <div className="user-status-container">
+                      {notifications[user.username] > 0 &&
+                        <span className="notification-badge">{notifications[user.username]}</span>}
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          <UserProfile 
+            user={{...props.user, status: userStatuses[props.user.username]}} 
+            onStatusChange={handleStatusChange} 
           />
-          {!isRecording && (
-            <button 
-              type="button" 
-              className="icon-button attachment-button" 
-              onClick={() => fileInputRef.current.click()}
-              disabled={isUploading}
-            >
-              <BsPlusCircleFill />
-            </button>
-          )}
-          <div className={`input-wrapper ${isRecording ? 'is-recording' : ''}`}>
-            {isRecording ? (
-              <div className="recorder-active-container">
-                <div className="recording-indicator">
-                  <AudioPlayer audioUrl={null} isRecording={true} recordingTime={recordingTime} />
-                </div>
-                <button
-                  type="button"
-                  onClick={toggleRecording}
-                  className="icon-button stop-recording-button"
-                >
-                  <FaStopCircle />
-                </button>
-              </div>
-            ) : recordedAudio ? (
-              <div className="recorder-active-container">
-                <AudioPlayer 
-                  audioUrl={URL.createObjectURL(recordedAudio)} 
-                  onDelete={() => {
-                    setRecordedAudio(null);
-                    setRecordingTime(0);
-                  }}
-                />
-              </div>
-            ) : (
-              <>
-                <input
-                  type="text"
-                  value={currentMessage}
-                  onChange={handleTyping}
-                  placeholder="Type a message..."
-                  className="message-input"
-                  disabled={isUploading}
-                />
-                <button
-                  type="button"
-                  onClick={toggleRecording}
-                  className="icon-button"
-                  disabled={isUploading}
-                >
-                  <FaMicrophone />
-                </button>
-              </>
-            )}
+        </div>
+        <div className="chat-area">
+          <div className="header">
+            <h3>{selectedChat.name || selectedChat.username}</h3>
+            <div className="current-user-info">
+              <p>Welcome, {props.user.username}!</p>
+              <img src={props.user.profileImage || defaultAvatar} alt="My Avatar" className="avatar" />
+            </div>
           </div>
-          {!isRecording && (
-            <button 
-              type="submit" 
-              className="icon-button send-button" 
-              disabled={isUploading || (!currentMessage.trim() && !recordedAudio)}
-            >
-              <IoSend />
-            </button>
-          )}
-        </form>
+          <div className="messages-container">
+            {messages.map((msg, index) => {
+              const senderUser = users.find(u => u.username === msg.sender) || (msg.sender === props.user.username ? props.user : {});
+              return (
+                <div
+                  key={index}
+                  className={`message-bubble ${msg.sender === props.user.username ? 'my-message' : 'other-message'}`}
+                >
+                  <img 
+                    src={senderUser.profileImage || defaultAvatar} 
+                    alt={msg.sender} 
+                    className="avatar message-avatar" 
+                  />
+                  <div className="message-content">
+                    <div className="message-header">
+                      <strong>{msg.sender}</strong>
+                      <span className="timestamp">
+                        {new Date(msg.timestamp).toLocaleString()}
+                      </span>
+                    </div>
+                    {msg.type === 'text' && <p className="message-text">{msg.text}</p>}
+                    {msg.type === 'image' && <img src={msg.fileUrl} alt="Sent file" className="chat-image" />}
+                    {msg.type === 'record' && <AudioPlayer audioUrl={msg.fileUrl} />}
+                  </div>
+                </div>
+              );
+            })}
+            {typingUsers.length > 0 && (
+              <div className="typing-indicator">
+                <div className="typing-dots">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+                <span className="typing-text">
+                  {typingUsers.length === 1 
+                    ? `${typingUsers[0]} is typing...`
+                    : `${typingUsers.join(', ')} are typing...`
+                  }
+                </span>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+          <form onSubmit={sendMessage} className={`message-form ${isRecording ? 'is-recording' : ''}`}>
+            <input
+              type="file"
+              ref={fileInputRef}
+              style={{ display: 'none' }}
+              onChange={handleFileSend}
+              disabled={isUploading}
+            />
+            {!isRecording && (
+              <button 
+                type="button" 
+                className="icon-button attachment-button" 
+                onClick={() => fileInputRef.current.click()}
+                disabled={isUploading}
+              >
+                <BsPlusCircleFill />
+              </button>
+            )}
+            <div className={`input-wrapper ${isRecording ? 'is-recording' : ''}`}>
+              {isRecording ? (
+                <div className="recorder-active-container">
+                  <div className="recording-indicator">
+                    <AudioPlayer audioUrl={null} isRecording={true} recordingTime={recordingTime} />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={toggleRecording}
+                    className="icon-button stop-recording-button"
+                  >
+                    <FaStopCircle />
+                  </button>
+                </div>
+              ) : recordedAudio ? (
+                <div className="recorder-active-container">
+                  <AudioPlayer 
+                    audioUrl={URL.createObjectURL(recordedAudio)} 
+                    onDelete={() => {
+                      setRecordedAudio(null);
+                      setRecordingTime(0);
+                    }}
+                  />
+                </div>
+              ) : (
+                <>
+                  <input
+                    type="text"
+                    value={currentMessage}
+                    onChange={handleTyping}
+                    placeholder="Type a message..."
+                    className="message-input"
+                    disabled={isUploading}
+                  />
+                  <button
+                    type="button"
+                    onClick={toggleRecording}
+                    className="icon-button"
+                    disabled={isUploading}
+                  >
+                    <FaMicrophone />
+                  </button>
+                </>
+              )}
+            </div>
+            {!isRecording && (
+              <button 
+                type="submit" 
+                className="icon-button send-button" 
+                disabled={isUploading || (!currentMessage.trim() && !recordedAudio)}
+              >
+                <IoSend />
+              </button>
+            )}
+          </form>
+        </div>
       </div>
     </div>
   );
@@ -487,13 +507,11 @@ const ChatsPage = (props) => {
 
 ChatsPage.propTypes = {
   user: PropTypes.shape({
-    username: PropTypes.string,
+    username: PropTypes.string.isRequired,
     secret: PropTypes.string,
-    email: PropTypes.string,
-    first_name: PropTypes.string,
-    last_name: PropTypes.string,
-    profileImage: PropTypes.string
-  }).isRequired
+    profileImage: PropTypes.string,
+  }).isRequired,
+  onLogout: PropTypes.func.isRequired,
 };
 
 export default ChatsPage;
