@@ -4,6 +4,7 @@ import './AuthPage.scss';
 import PropTypes from 'prop-types';
 import { FaGoogle, FaFacebookF,  FaGithub } from 'react-icons/fa';
 import ResetPasswordPage from './ResetPasswordPage';
+import { useNavigate } from 'react-router-dom';
 
 // Forgot Password UI
 const ForgotPasswordForm = ({ onBack, onOtp }) => {
@@ -54,6 +55,8 @@ const AuthPage = (props) => {
   const [showForgot, setShowForgot] = useState(false);
   const [showOtp, setShowOtp] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
+  const navigate = useNavigate();
 
   const onAuth = (e) => {
     e.preventDefault();
@@ -68,7 +71,17 @@ const AuthPage = (props) => {
 
     axios.post(url, requestData, { headers })
       .then(r => {
-        props.onAuth(r.data);
+        if (!isLogin) {
+          setSuccessMsg(r.data.msg || 'Registration successful! You can now log in.');
+          setTimeout(() => {
+            setIsLogin(true);
+            setSuccessMsg('');
+            navigate('/auth/login');
+          }, 2000);
+        } else {
+          props.onAuth(r.data.user, r.data.token);
+          navigate('/chats');
+        }
       })
       .catch(err => {
         console.error("Authentication error:", err);
@@ -76,6 +89,8 @@ const AuthPage = (props) => {
           const msg = err.response.data.msg;
           if (isLogin && msg.toLowerCase().includes("invalid credentials")) {
             setFormErrors({ password: 'Wrong email or password' });
+          } else if (msg.toLowerCase().includes("previously deleted")) {
+            setFormErrors({ email: msg });
           } else if (msg.toLowerCase().includes("username")) {
             setFormErrors({ username: msg });
           } else if (msg.toLowerCase().includes("email")) {
@@ -130,6 +145,7 @@ const AuthPage = (props) => {
     <div className="login-page">
       <div className="login-box">
         <h2>{isLogin ? 'Login' : 'Sign Up'}</h2>
+        {successMsg && <div className="form-success">{successMsg}</div>}
         <form onSubmit={onAuth} autoComplete="off">
           <div className="input-box">
             <input type="text" name="username" required placeholder=" " />

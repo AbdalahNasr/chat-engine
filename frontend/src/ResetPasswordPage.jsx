@@ -254,4 +254,8 @@ const ResetPasswordPage = ({ email }) => {
   return null;
 };
 
-export default ResetPasswordPage; 
+ResetPasswordPage.propTypes = {
+  email: PropTypes.string,
+};
+
+export default ResetPasswordPage;

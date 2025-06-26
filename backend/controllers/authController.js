@@ -28,45 +28,92 @@ exports.register = async (req, res) => {
   const { username, password, email, first_name, last_name } = req.body;
 
   try {
-    // 1. Check if user or email already exists
+    // 1. Check if user or email already exists (including soft-deleted)
     let user = await User.findOne({ username });
     if (user) {
+      if (user.isDeleted) {
+        // Restore soft-deleted user with new info, require email verification
+        user.password = await bcrypt.hash(password, 10);
+        user.first_name = first_name;
+        user.last_name = last_name;
+        user.profileImage = req.body.profileImage || '';
+        user.isDeleted = false;
+        user.isVerified = false;
+        // Generate new email verification token
+        const emailVerificationToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+        user.emailVerificationToken = emailVerificationToken;
+        await user.save();
+        // Send verification email
+        const verifyUrl = `${BASE_URL}/api/auth/verify-email?token=${user.emailVerificationToken}`;
+        const verificationEmailHtml = `
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Verify Your Email</title>
+            <style>
+              @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+              body { margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; }
+              .email-container { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); min-height: 100vh; padding: 20px; box-sizing: border-box; }
+              .email-card { background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(30px); border-radius: 28px; box-shadow: 0 25px 80px rgba(0, 0, 0, 0.15); max-width: 500px; margin: 0 auto; overflow: hidden; }
+              .header { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); padding: 50px 30px 40px; text-align: center; }
+              .logo { width: 72px; height: 72px; background: rgba(255, 255, 255, 0.25); border-radius: 20px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 20px; }
+              .logo svg { width: 36px; height: 36px; fill: white; }
+              .app-name { color: white; font-size: 32px; font-weight: 800; margin: 0; letter-spacing: -1px; text-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+              .content { padding: 50px 35px; text-align: center; }
+              .title { color: #1a1a1a; font-size: 28px; font-weight: 700; margin: 0 0 20px 0; }
+              .description { color: #64748b; font-size: 17px; line-height: 1.7; margin: 0 0 40px 0; }
+              .verify-button { display: inline-block; padding: 18px 40px; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; text-decoration: none; font-size: 18px; font-weight: 600; border-radius: 16px; box-shadow: 0 10px 30px rgba(0, 172, 193, 0.3); transition: all 0.3s ease; }
+              .verify-button:hover { transform: translateY(-3px); box-shadow: 0 14px 40px rgba(0, 172, 193, 0.4); }
+              .security-notice { color: #94a3b8; font-size: 15px; margin-top: 40px; }
+              .footer { background: #f8fafc; padding: 30px; text-align: center; border-top: 1px solid #e2e8f0; }
+              .footer-text { color: #64748b; font-size: 14px; }
+            </style>
+          </head>
+          <body>
+            <div class="email-container">
+              <div class="email-card">
+                <div class="header">
+                  <div class="logo">
+                    <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h4l4 4 4-4h4c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
+                  </div>
+                  <h1 class="app-name">Chat App</h1>
+                </div>
+                <div class="content">
+                  <h2 class="title">Welcome! Please Verify Your Email</h2>
+                  <p class="description">Thank you for signing up! Please click the button below to confirm your email address and activate your account.</p>
+                  <a href="${verifyUrl}" class="verify-button">Verify Email Address</a>
+                  <p class="security-notice">If you didn't create an account, you can safely ignore this email.</p>
+                </div>
+                <div class="footer"><p class="footer-text">© ${new Date().getFullYear()} Chat App. All rights reserved.</p></div>
+              </div>
+            </div>
+          </body>
+          </html>
+        `;
+        await sendMail(user.email, 'Verify your email for Chat App', verificationEmailHtml);
+        return res.status(200).json({ msg: 'This username was previously deleted. Please check your email to restore your account.' });
+      }
       return res.status(400).json({ msg: 'Username already exists' });
     }
     let emailUser = await User.findOne({ email });
     if (emailUser) {
-        return res.status(400).json({ msg: 'An account with this email already exists' });
-    }
-
-    // 2. Create a new user instance
-    user = new User({
-      username,
-      password,
-      email,
-      first_name,
-      last_name,
-      profileImage: req.body.profileImage || '', // From avatarUpload middleware
-      isVerified: false,
-    });
-
-    // 3. Hash the password before saving
-    const salt = await bcrypt.genSalt(10);
-    user.password = await bcrypt.hash(password, salt);
-
-    // 4. Save the user to the database
-    await user.save();
-
-    // 5. Send back user data (excluding password)
-    const userResponse = user.toObject();
-    delete userResponse.password;
-
-    // Generate email verification token
-    const emailVerificationToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
-    user.emailVerificationToken = emailVerificationToken;
-    await user.save();
-
-    // Send verification email with a new, beautiful template
-    const verifyUrl = `${BASE_URL}/api/auth/verify-email?token=${emailVerificationToken}`;
+      if (emailUser.isDeleted) {
+        // Restore soft-deleted user with new info, require email verification
+        emailUser.username = username;
+        emailUser.password = await bcrypt.hash(password, 10);
+        emailUser.first_name = first_name;
+        emailUser.last_name = last_name;
+        emailUser.profileImage = req.body.profileImage || '';
+        emailUser.isDeleted = false;
+        emailUser.isVerified = false;
+        // Generate new email verification token
+        const emailVerificationToken = jwt.sign({ id: emailUser._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+        emailUser.emailVerificationToken = emailVerificationToken;
+        await emailUser.save();
+        // Send verification email
+        const verifyUrl = `${BASE_URL}/api/auth/verify-email?token=${emailUser.emailVerificationToken}`;
     const verificationEmailHtml = `
       <!DOCTYPE html>
       <html lang="en">
@@ -76,59 +123,17 @@ exports.register = async (req, res) => {
         <title>Verify Your Email</title>
         <style>
           @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-          body { 
-            margin: 0; 
-            padding: 0; 
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: #f8fafc;
-          }
-          .email-container { 
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            min-height: 100vh; 
-            padding: 20px; 
-            box-sizing: border-box;
-          }
-          .email-card {
-            background: rgba(255, 255, 255, 0.98);
-            backdrop-filter: blur(30px);
-            border-radius: 28px;
-            box-shadow: 0 25px 80px rgba(0, 0, 0, 0.15);
-            max-width: 500px;
-            margin: 0 auto;
-            overflow: hidden;
-          }
-          .header {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            padding: 50px 30px 40px;
-            text-align: center;
-          }
-          .logo {
-            width: 72px;
-            height: 72px;
-            background: rgba(255, 255, 255, 0.25);
-            border-radius: 20px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 20px;
-          }
+              body { margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; }
+              .email-container { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); min-height: 100vh; padding: 20px; box-sizing: border-box; }
+              .email-card { background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(30px); border-radius: 28px; box-shadow: 0 25px 80px rgba(0, 0, 0, 0.15); max-width: 500px; margin: 0 auto; overflow: hidden; }
+              .header { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); padding: 50px 30px 40px; text-align: center; }
+              .logo { width: 72px; height: 72px; background: rgba(255, 255, 255, 0.25); border-radius: 20px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 20px; }
           .logo svg { width: 36px; height: 36px; fill: white; }
           .app-name { color: white; font-size: 32px; font-weight: 800; margin: 0; letter-spacing: -1px; text-shadow: 0 2px 8px rgba(0,0,0,0.1); }
           .content { padding: 50px 35px; text-align: center; }
           .title { color: #1a1a1a; font-size: 28px; font-weight: 700; margin: 0 0 20px 0; }
           .description { color: #64748b; font-size: 17px; line-height: 1.7; margin: 0 0 40px 0; }
-          .verify-button {
-            display: inline-block;
-            padding: 18px 40px;
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            color: white;
-            text-decoration: none;
-            font-size: 18px;
-            font-weight: 600;
-            border-radius: 16px;
-            box-shadow: 0 10px 30px rgba(0, 172, 193, 0.3);
-            transition: all 0.3s ease;
-          }
+              .verify-button { display: inline-block; padding: 18px 40px; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; text-decoration: none; font-size: 18px; font-weight: 600; border-radius: 16px; box-shadow: 0 10px 30px rgba(0, 172, 193, 0.3); transition: all 0.3s ease; }
           .verify-button:hover { transform: translateY(-3px); box-shadow: 0 14px 40px rgba(0, 172, 193, 0.4); }
           .security-notice { color: #94a3b8; font-size: 15px; margin-top: 40px; }
           .footer { background: #f8fafc; padding: 30px; text-align: center; border-top: 1px solid #e2e8f0; }
@@ -156,10 +161,32 @@ exports.register = async (req, res) => {
       </body>
       </html>
     `;
+        await sendMail(emailUser.email, 'Verify your email for Chat App', verificationEmailHtml);
+        return res.status(200).json({ msg: 'An account with this email was previously deleted. Please check your email to restore your account.' });
+      }
+      return res.status(400).json({ msg: 'An account with this email already exists' });
+    }
 
-    await sendMail(user.email, 'Verify your email for Chat App', verificationEmailHtml);
+    // 2. Create a new user instance
+    user = new User({
+      username,
+      password,
+      email,
+      first_name,
+      last_name,
+      profileImage: req.body.profileImage || '', // From avatarUpload middleware
+      isVerified: true, // Bypass email verification for local dev
+    });
 
-    res.status(201).json({ ...userResponse, msg: 'Verification email sent. Please check your inbox.' });
+    // 3. Hash the password before saving
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(password, salt);
+
+    // 4. Save the user to the database
+    await user.save();
+
+    // 5. Send back only a success message (do not return user object)
+    res.status(201).json({ msg: 'Registration successful! You can now log in.' });
     
   } catch (err) {
     console.error(err.message);
@@ -189,11 +216,14 @@ exports.login = async (req, res) => {
       return res.status(400).json({ msg: 'Invalid credentials' });
     }
 
-    // Send back user data on successful login (excluding password)
+    // Send back user data and a JWT token on successful login
     const userResponse = user.toObject();
     delete userResponse.password;
     
-    res.status(200).json(userResponse);
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+
+    console.log('LOGIN RESPONSE:', { user: userResponse, token });
+    res.status(200).json({ user: userResponse, token });
 
   } catch (err) {
     console.error(err.message);
@@ -210,6 +240,7 @@ exports.verifyEmail = async (req, res) => {
     if (!user) return res.status(400).json({ msg: 'Invalid or expired token' });
     user.isVerified = true;
     user.emailVerificationToken = undefined;
+    if (user.isDeleted) user.isDeleted = false;
     await user.save();
     res.json({ msg: 'Email verified successfully. You can now log in.' });
   } catch (err) {

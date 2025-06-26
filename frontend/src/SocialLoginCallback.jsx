@@ -12,19 +12,26 @@ const SocialLoginCallback = ({ onAuth }) => {
     const token = params.get('token');
 
     if (user && token) {
-      // Parse user data and save to local storage or state
-      const userData = JSON.parse(decodeURIComponent(user));
-      localStorage.setItem('user', JSON.stringify(userData));
-      localStorage.setItem('token', token);
+      try {
+        // Parse user data and save to local storage or state
+        const userData = JSON.parse(decodeURIComponent(user));
+        localStorage.setItem('user', JSON.stringify(userData));
+        localStorage.setItem('token', token);
 
-      // Call the onAuth prop to update the app's auth state
-      onAuth(userData);
+        // Call the onAuth prop to update the app's auth state
+        onAuth(userData, token);
 
-      // Redirect to the chats page
-      navigate('/chats');
+        // Redirect to the chats page
+        console.log('About to navigate to /chats');
+        window.location.href = '/chats';
+        console.log('Navigated to /chats');
+      } catch (err) {
+        console.error('Failed to parse user from social login callback:', err);
+        navigate('/auth/login');
+      }
     } else {
       // Handle error or redirect to login
-      navigate('/');
+      navigate('/auth/login');
     }
   }, [navigate, onAuth]);
 

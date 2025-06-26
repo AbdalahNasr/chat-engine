@@ -42,6 +42,10 @@ connectDB();
 const app = express();
 app.use(express.json());
 
+// Swagger setup
+const setupSwagger = require('./swagger');
+setupSwagger(app);
+
 // Determine BASE_URL
 const BASE_URL = process.env.BASE_URL || `http://localhost:3001`;
 
@@ -83,6 +87,7 @@ app.use(passport.session());
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/upload', require('./routes/upload'));
+app.use('/api/messages', require('./routes/messages'));
 
 const server = http.createServer(app);
 

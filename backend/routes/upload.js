@@ -3,9 +3,43 @@ const router = express.Router();
 const { upload, uploadToCloudinary } = require('../middleware/upload');
 const Message = require('../models/Message');
 
-// @route   POST api/upload
-// @desc    Upload a file and get its URL
-// @access  Private (should be protected)
+/**
+ * @swagger
+ * /upload:
+ *   post:
+ *     summary: Upload a file and get its URL
+ *     consumes:
+ *       - multipart/form-data
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *               sender:
+ *                 type: string
+ *               recipient:
+ *                 type: string
+ *               type:
+ *                 type: string
+ *                 description: File type (e.g., 'record')
+ *     responses:
+ *       200:
+ *         description: File uploaded and message created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 fileUrl:
+ *                   type: string
+ *                 message:
+ *                   type: object
+ */
 router.post('/', upload.single('file'), uploadToCloudinary, async (req, res) => {
   if (!req.file || !req.file.cloudinaryUrl) {
     return res.status(400).json({ msg: 'File upload failed.' });

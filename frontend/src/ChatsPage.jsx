@@ -10,12 +10,19 @@ import { IoSend } from 'react-icons/io5';
 import AudioPlayer from './AudioPlayer';
 import UserProfile from './UserProfile';
 import PropTypes from 'prop-types';
+import dayjs from 'dayjs';
+import { FiMoreHorizontal } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
+import { FaPlus, FaCog } from 'react-icons/fa';
 
 // A default avatar for users without a profile picture
 const defaultAvatar = 'https://icon-library.com/images/default-user-icon/default-user-icon-13.jpg';
 
 // This should match the address of your backend server
-const socket = io(import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001');
+const socket = io(process.env.REACT_APP_BACKEND_URL || 'http://localhost:3001');
+
+const MIN_SIDEBAR_WIDTH = 220;
+const MAX_SIDEBAR_WIDTH = 400;
 
 const ChatsPage = (props) => {
   const [messages, setMessages] = useState([]);
@@ -30,12 +37,17 @@ const ChatsPage = (props) => {
   const [isTyping, setIsTyping] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [userStatuses, setUserStatuses] = useState({});
+  const [sidebarWidth, setSidebarWidth] = useState(260);
+  const [isResizing, setIsResizing] = useState(false);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const typingTimeoutRef = useRef(null);
   const recordingIntervalRef = useRef(null);
+  const sidebarRef = useRef(null);
+  const [openMenuIndex, setOpenMenuIndex] = useState(null);
+  const navigate = useNavigate();
 
   // Function to scroll to the latest message
   const scrollToBottom = () => {
@@ -187,21 +199,6 @@ const ChatsPage = (props) => {
     };
   }, []);
 
-  const handleSelectChat = (chat) => {
-    setSelectedChat(chat);
-    // Clear notifications for the selected chat
-    const chatName = chat.isGlobal ? 'Global Chat' : chat.username;
-    setNotifications(prev => {
-      const newNotifications = { ...prev };
-      delete newNotifications[chatName];
-      return newNotifications;
-    });
-  };
-
-  const handleStatusChange = (status) => {
-    socket.emit('change_status', { username: props.user.username, status });
-  };
-
   const uploadAndSendFile = async (file, type) => {
     const formData = new FormData();
     formData.append('file', file);
@@ -311,33 +308,129 @@ const ChatsPage = (props) => {
     }
   };
 
+  // Sidebar resizing handlers
+  const startResizing = () => {
+    setIsResizing(true);
+    document.body.style.cursor = 'col-resize';
+  };
+  const stopResizing = () => {
+    setIsResizing(false);
+    document.body.style.cursor = '';
+  };
+  const handleResizing = (e) => {
+    if (!isResizing) return;
+    let newWidth = e.clientX;
+    if (newWidth < MIN_SIDEBAR_WIDTH) newWidth = MIN_SIDEBAR_WIDTH;
+    if (newWidth > MAX_SIDEBAR_WIDTH) newWidth = MAX_SIDEBAR_WIDTH;
+    setSidebarWidth(newWidth);
+  };
+  useEffect(() => {
+    if (isResizing) {
+      window.addEventListener('mousemove', handleResizing);
+      window.addEventListener('mouseup', stopResizing);
+    } else {
+      window.removeEventListener('mousemove', handleResizing);
+      window.removeEventListener('mouseup', stopResizing);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleResizing);
+      window.removeEventListener('mouseup', stopResizing);
+    };
+  }, [isResizing, handleResizing]);
+
+  // Close ellipsis menu on outside click
+  useEffect(() => {
+    if (openMenuIndex === null) return;
+    const handleClick = (e) => {
+      // Only close if click is outside any .message-actions-menu or .ellipsis-btn
+      if (!e.target.closest('.message-actions-menu') && !e.target.closest('.ellipsis-btn')) {
+        setOpenMenuIndex(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [openMenuIndex]);
+
+  // Helper to group messages by date
+  const renderMessagesWithDateSeparators = () => {
+    let lastDate = null;
+    return messages.map((msg, index) => {
+      const msgDate = dayjs(msg.timestamp).format('YYYY-MM-DD');
+      const showDate = msgDate !== lastDate;
+      const isFirstAfterDate = showDate;
+      lastDate = msgDate;
+      const senderUser = users.find(u => u.username === msg.sender) || (msg.sender === props.user.username ? props.user : {});
+      return (
+        <>
+          {showDate && (
+            <div className="date-separator" key={`date-${msgDate}`}><span>{dayjs(msg.timestamp).format('dddd, MMMM D, YYYY')}</span></div>
+          )}
+          <div
+            key={msg._id || index}
+            className={`message-bubble discord-style ${msg.sender === props.user.username ? 'my-message' : 'other-message'}${isFirstAfterDate ? ' first-after-date' : ''}`}
+            onMouseLeave={() => {}}
+          >
+            <img 
+              src={senderUser.profileImage || defaultAvatar} 
+              alt={msg.sender} 
+              className="avatar message-avatar" 
+            />
+            <div className="message-content">
+              <div className="message-header-row">
+                <strong className="sender-name">{msg.sender}</strong>
+                <span className="timestamp-inline">{dayjs(msg.timestamp).format('h:mm A')}</span>
+              </div>
+              {msg.type === 'text' && <p className="message-text">{msg.text}</p>}
+              {msg.type === 'image' && <img src={msg.fileUrl} alt="Sent file" className="chat-image" />}
+              {msg.type === 'record' && <div style={{maxWidth:'340px', minWidth:'180px', width:'100%'}}><AudioPlayer audioUrl={msg.fileUrl} /></div>}
+            </div>
+            <button
+              className="ellipsis-btn"
+              onClick={e => {
+                e.stopPropagation();
+                setOpenMenuIndex(openMenuIndex === index ? null : index);
+              }}
+              tabIndex={0}
+              aria-label="Show message actions"
+            >
+              <FiMoreHorizontal />
+            </button>
+            {openMenuIndex === index && (
+              <div className="message-actions-menu" onClick={e => e.stopPropagation()}>
+                <button><span role="img" aria-label="Add Reaction">😃</span> Add Reaction</button>
+                <button><span role="img" aria-label="Edit">✏️</span> Edit Message</button>
+                <button><span role="img" aria-label="Reply">↩️</span> Reply</button>
+                <button><span role="img" aria-label="Forward">📤</span> Forward</button>
+                <button><span role="img" aria-label="Copy">📋</span> Copy Text</button>
+                <button><span role="img" aria-label="Delete">🗑️</span> Delete Message</button>
+              </div>
+            )}
+          </div>
+        </>
+      );
+    });
+  };
+
   return (
-    <div style={{ height: "100vh", width: "100vw" }}>
-      <button 
-        onClick={() => props.onLogout()} 
-        style={{
-          position: 'absolute',
-          top: '12px',
-          left: '12px',
-          padding: '8px 12px',
-          backgroundColor: '#f44336',
-          color: 'white',
-          border: 'none',
-          borderRadius: '4px',
-          cursor: 'pointer',
-          zIndex: 100,
-          fontWeight: 'bold',
-        }}
+    <div className="chats-layout">
+      {/* Discord-style server bar */}
+      <div className="server-bar">
+        {/* <div className="server-icon active"><FaDiscord /></div> */}
+        <div className="server-icon active"><img src="https://cdn-icons-png.flaticon.com/512/5968/5968756.png" alt="Server" /></div>
+        <div className="server-icon"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111370.png" alt="Server" /></div>
+        <div className="server-icon add-server"><FaPlus /></div>
+        <div className="server-icon settings-icon" onClick={() => navigate('/settings')} title="Settings"><FaCog /></div>
+      </div>
+      <div
+        className="sidebar resizable-sidebar"
+        ref={sidebarRef}
+        style={{ width: sidebarWidth }}
       >
-        Logout
-      </button>
-      <div className="chats-container">
-        <div className="sidebar">
           <h3 className="sidebar-header">Users</h3>
           <ul className="user-list">
             <li 
               className={`user-list-item ${selectedChat.isGlobal ? 'selected-chat' : ''}`}
-              onClick={() => handleSelectChat({ isGlobal: true, name: 'Global Chat' })}
+            onClick={() => setSelectedChat({ isGlobal: true, name: 'Global Chat' })}
             >
               <div className="user-info">
                 <img src={defaultAvatar} alt="Global" className="avatar" />
@@ -352,7 +445,7 @@ const ChatsPage = (props) => {
                 <li 
                   key={user._id} 
                   className={`user-list-item ${selectedChat._id === user._id ? 'selected-chat' : ''}`}
-                  onClick={() => handleSelectChat(user)}
+                onClick={() => setSelectedChat(user)}
                 >
                   <div className="user-info">
                     <div className="avatar-wrapper">
@@ -369,11 +462,20 @@ const ChatsPage = (props) => {
               );
             })}
           </ul>
+        {/* Move user profile card to bottom */}
+        <div className="sidebar-profile-card">
           <UserProfile 
             user={{...props.user, status: userStatuses[props.user.username]}} 
-            onStatusChange={handleStatusChange} 
+            onStatusChange={status => socket.emit('change_status', { username: props.user.username, status })} 
           />
         </div>
+        <div
+          className="sidebar-drag-handle"
+          onMouseDown={startResizing}
+          title="Resize sidebar"
+        />
+      </div>
+      <div className="main-chat-area">
         <div className="chat-area">
           <div className="header">
             <h3>{selectedChat.name || selectedChat.username}</h3>
@@ -383,32 +485,7 @@ const ChatsPage = (props) => {
             </div>
           </div>
           <div className="messages-container">
-            {messages.map((msg, index) => {
-              const senderUser = users.find(u => u.username === msg.sender) || (msg.sender === props.user.username ? props.user : {});
-              return (
-                <div
-                  key={index}
-                  className={`message-bubble ${msg.sender === props.user.username ? 'my-message' : 'other-message'}`}
-                >
-                  <img 
-                    src={senderUser.profileImage || defaultAvatar} 
-                    alt={msg.sender} 
-                    className="avatar message-avatar" 
-                  />
-                  <div className="message-content">
-                    <div className="message-header">
-                      <strong>{msg.sender}</strong>
-                      <span className="timestamp">
-                        {new Date(msg.timestamp).toLocaleString()}
-                      </span>
-                    </div>
-                    {msg.type === 'text' && <p className="message-text">{msg.text}</p>}
-                    {msg.type === 'image' && <img src={msg.fileUrl} alt="Sent file" className="chat-image" />}
-                    {msg.type === 'record' && <AudioPlayer audioUrl={msg.fileUrl} />}
-                  </div>
-                </div>
-              );
-            })}
+            {renderMessagesWithDateSeparators()}
             {typingUsers.length > 0 && (
               <div className="typing-indicator">
                 <div className="typing-dots">
@@ -500,6 +577,22 @@ const ChatsPage = (props) => {
             )}
           </form>
         </div>
+        {/* Right-side contact profile panel */}
+        {!selectedChat.isGlobal && (
+          <div className="contact-profile-panel">
+            {/* Placeholder for contact profile, note, and view full profile */}
+            <div className="contact-profile-header">
+              <img src={selectedChat.profileImage || defaultAvatar} alt={selectedChat.username} className="contact-avatar" />
+              <div className="contact-username">{selectedChat.username}</div>
+              <div className="contact-status">{userStatuses[selectedChat.username] || 'offline'}</div>
+            </div>
+            <div className="contact-note-section">
+              <label htmlFor="contact-note">Note (only visible to you):</label>
+              <textarea id="contact-note" className="contact-note" placeholder="Add a note..." />
+            </div>
+            <button className="view-full-profile-btn">View Full Profile</button>
+          </div>
+        )}
       </div>
     </div>
   );

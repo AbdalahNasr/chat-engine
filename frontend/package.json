@@ -1,1 +1,60 @@
-{"homepage":"https://AbdalahNasr.github.io/chat-engine","name":"frontend","private":true,"version":"0.0.0","type":"module","scripts":{"dev":"vite","build":"vite build","predeploy":"npm run build","deploy":"gh-pages -d build","lint":"eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0","preview":"vite preview"},"dependencies":{"@supabase/supabase-js":"^2.50.0","axios":"^1.6.8","react":"^18.2.0","react-chat-engine-advanced":"^0.1.28","react-chat-engine-pretty":"^0.1.8","react-dom":"^18.2.0","react-icons":"^5.5.0","react-router-dom":"^7.6.2","socket.io-client":"^4.8.1","three":"^0.177.0"},"devDependencies":{"@types/react":"^18.2.66","@types/react-dom":"^18.2.22","@vitejs/plugin-react":"^4.5.2","eslint":"^8.57.0","eslint-plugin-react":"^7.34.1","eslint-plugin-react-hooks":"^4.6.0","eslint-plugin-react-refresh":"^0.4.6","gh-pages":"^6.1.1","sass":"^1.89.2","vite":"^6.3.5"}}
+{
+  "name": "frontend",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build",
+    "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
+    "tailwind:init": "tailwindcss init -p",
+    "build:css": "postcss src/input.css -o public/output.css",
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.50.0",
+    "@tailwindcss/cli": "^4.1.10",
+    "axios": "^1.6.8",
+    "dayjs": "^1.11.13",
+    "react": "^18.3.0",
+    "react-chat-engine-advanced": "^0.1.28",
+    "react-chat-engine-pretty": "^0.1.8",
+    "react-dom": "^18.3.0",
+    "react-icons": "^5.5.0",
+    "react-router-dom": "^7.6.2",
+    "react-scripts": "^5.0.1",
+    "socket.io-client": "^4.8.1",
+    "tailwindcss": "^3.4.17",
+    "three": "^0.177.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.66",
+    "@types/react-dom": "^18.2.22",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^8.57.0",
+    "eslint-plugin-react": "^7.34.1",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.6",
+    "gh-pages": "^6.1.1",
+    "install": "^0.13.0",
+    "postcss": "^8.5.6",
+    "postcss-cli": "^11.0.1",
+    "sass": "^1.89.2",
+    "serve": "^14.2.4",
+    "ts-node": "^10.9.2"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}

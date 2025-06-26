@@ -25,6 +25,8 @@ const avatarUpload = multer({
 });
 
 const uploadAvatarToCloudinary = (req, res, next) => {
+  console.log('uploadAvatarToCloudinary: called');
+  console.log('uploadAvatarToCloudinary: req.file =', req.file);
   if (!req.file) {
     return next(); // No file to upload, proceed to the next middleware
   }

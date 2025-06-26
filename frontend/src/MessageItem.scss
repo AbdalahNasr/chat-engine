@@ -1,0 +1,66 @@
+.message-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(30,38,58,0.7);
+  margin-bottom: 8px;
+  .message-text {
+    flex: 1;
+    color: #fff;
+    font-size: 1.05em;
+  }
+  .message-actions {
+    display: flex;
+    gap: 8px;
+    button {
+      background: none;
+      border: none;
+      color: #00cfff;
+      font-size: 1.1em;
+      cursor: pointer;
+      transition: color 0.2s, box-shadow 0.2s;
+      border-radius: 50%;
+      padding: 6px;
+      &:hover {
+        color: #ff4d6d;
+        box-shadow: 0 0 8px #ff4d6d55;
+      }
+    }
+  }
+  .edit-area {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    .edit-input {
+      border-radius: 8px;
+      border: 1.5px solid #407bff;
+      padding: 6px 10px;
+      font-size: 1em;
+      background: #232b3e;
+      color: #fff;
+      width: 180px;
+      outline: none;
+      transition: border 0.2s, box-shadow 0.2s;
+      &:focus {
+        border: 1.5px solid #00cfff;
+        box-shadow: 0 0 8px #00cfff88;
+      }
+    }
+    button {
+      background: none;
+      border: none;
+      color: #00cfff;
+      font-size: 1.1em;
+      cursor: pointer;
+      border-radius: 50%;
+      padding: 6px;
+      transition: color 0.2s, box-shadow 0.2s;
+      &:hover {
+        color: #407bff;
+        box-shadow: 0 0 8px #407bff55;
+      }
+    }
+  }
+} 
